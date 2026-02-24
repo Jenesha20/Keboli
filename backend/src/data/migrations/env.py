@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 import sys
 from pathlib import Path
 from alembic import context
-
+import enum
 root_dir = Path(__file__).resolve().parents[3] 
 sys.path.append(str(root_dir))
 
@@ -15,6 +15,7 @@ from src.config.settings import settings
 from src.data.models import Base
 from src.data.models.recruiter import Recruiter
 from src.data.models.organization import Organization
+from src.data.models.assessment import Assessment
 
 config = context.config
 
