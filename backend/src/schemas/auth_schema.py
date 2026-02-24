@@ -14,3 +14,8 @@ class RecruiterOut(BaseModel):
 
 class LoginResponse(BaseModel):
     user: RecruiterOut
+
+class OrgCreate(BaseModel):
+    org_name: str
+    email: EmailStr
+    password: str

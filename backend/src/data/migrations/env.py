@@ -13,6 +13,8 @@ sys.path.append(str(root_dir))
 
 from src.config.settings import settings
 from src.data.models import Base
+from src.data.models.recruiter import Recruiter
+from src.data.models.organization import Organization
 
 config = context.config
 

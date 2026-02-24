@@ -8,10 +8,12 @@ from src.core.security.jwt import create_access_token
 from src.core.security.password import verify_password
 from src.core.security.roles import Role
 from src.data.models.recruiter import Recruiter
-from src.schemas.auth_schema import LoginRequest, LoginResponse, RecruiterOut
+from src.schemas.auth_schema import LoginRequest, LoginResponse, RecruiterOut, OrgCreate
+from src.core.services.registration_service import RegistrationService
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -36,6 +38,14 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
 
     return LoginResponse(user=RecruiterOut(id=str(recruiter.id), email=recruiter.email, org_id=str(recruiter.org_id)))
 
+@router.post("/register-org")
+async def register_org(payload: OrgCreate, db: AsyncSession = Depends(get_db)):
+    service = RegistrationService(db)
+    return await service.register_new_workspace(
+        org_name=payload.org_name,
+        admin_email=payload.email,
+        password_hash=payload.password 
+    )
 
 @router.post("/logout")
 async def logout(response: Response):
