@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from src.constants.enums import DifficultyLevel
 class AssessmentBase(BaseModel):
     title: str = Field(..., min_length=3, max_length=255, examples=["Senior Python Developer Test"])
-    job_description: Optional[str] = Field(None, description="The JD used by AI to generate questions")
+    job_description: str = Field(..., min_length=1, description="The JD used by AI to generate questions")
     duration_minutes: int = Field(30, gt=0, le=300)
     passing_score: int = Field(60, ge=0, le=100)
     difficulty_level: DifficultyLevel = DifficultyLevel.MEDIUM

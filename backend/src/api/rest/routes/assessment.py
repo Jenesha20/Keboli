@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, UploadFile, File, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
@@ -7,6 +7,7 @@ from src.config.settings import settings
 from src.data.models.assessment import Assessment
 from src.schemas.assessment_schema import AssessmentCreate, AssessmentResponse,AssessmentUpdate
 from src.core.services.assessment_service import AssessmentService
+from src.core.utils.file_processing import extract_text_from_file
 from src.data.models.recruiter import Recruiter
 
 router = APIRouter(prefix="/assessment", tags=["auth"])
@@ -19,6 +20,42 @@ async def create_new_assessment(
 ):
     service = AssessmentService(db)
     return await service.create_assessment(org_id=current_user.org_id, data=payload.dict())
+
+
+@router.post("/create-with-file")
+async def create_assessment_with_file(
+    title: str = Form(...),
+    duration_minutes: int = Form(30),
+    passing_score: int = Form(60),
+    difficulty_level: str = Form("medium"),
+    max_attempts: int = Form(1),
+    is_active: bool = Form(True),
+    file: UploadFile | None = File(None),
+    raw_text: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: Recruiter = Depends(get_current_recruiter),
+):
+    if file is not None:
+        content = await file.read()
+        job_description = await extract_text_from_file(content, file.filename)
+    else:
+        job_description = raw_text
+
+    if not job_description:
+        raise HTTPException(status_code=422, detail="job_description is required")
+
+    payload = {
+        "title": title,
+        "job_description": job_description,
+        "duration_minutes": duration_minutes,
+        "passing_score": passing_score,
+        "difficulty_level": difficulty_level,
+        "max_attempts": max_attempts,
+        "is_active": is_active,
+    }
+
+    service = AssessmentService(db)
+    return await service.create_assessment(org_id=current_user.org_id, data=payload)
 
 @router.patch("/{assessment_id}/toggle")
 async def toggle_assessment(

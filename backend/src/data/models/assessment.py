@@ -14,7 +14,7 @@ class Assessment(Base):
     org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
     
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    job_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    job_description: Mapped[str] = mapped_column(Text, nullable=False)
     
     duration_minutes: Mapped[int] = mapped_column(Integer, default=30)
     passing_score: Mapped[int] = mapped_column(Integer, default=60)
