@@ -1,6 +1,6 @@
 import io
 
-import fitz  # PyMuPDF
+import fitz  
 from docx import Document
 
 
