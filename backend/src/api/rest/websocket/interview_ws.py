@@ -267,25 +267,34 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from src.core.services.interview_service import InterviewService
 import asyncio
+from uuid import UUID,uuid4
+from src.api.rest.dependencies import get_db
 router = APIRouter()
 
 
 @router.websocket("/ws/interview")
 async def interview_ws(ws: WebSocket):
     await ws.accept()
-    service = InterviewService()
-    stt_task = asyncio.create_task(service.start(ws))
-    try:
-        while True:
-            msg = await ws.receive()
+    session_id = ws.query_params.get("session_id")
+    if not session_id:
+        session_id = uuid4()
+        print(f"Generated new session_id: {session_id}")    
+    async for db in get_db():
+        service = InterviewService(db,session_id)
+        stt_task = asyncio.create_task(service.start(ws))
+        try:
+            while True:
+                msg = await ws.receive()
 
-            if msg.get("type") == "websocket.disconnect":
-                raise WebSocketDisconnect
+                if msg.get("type") == "websocket.disconnect":
+                    raise WebSocketDisconnect
 
-            if msg.get("bytes"):
-                service.write_audio(msg["bytes"])
+                if msg.get("bytes"):
+                    service.write_audio(msg["bytes"])
 
-    except WebSocketDisconnect:
-        pass
-    finally:
-        service.close()
+        except WebSocketDisconnect:
+            pass
+        finally:
+            stt_task.cancel()
+            service.close()
+            break

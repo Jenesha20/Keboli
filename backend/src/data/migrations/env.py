@@ -16,7 +16,7 @@ from src.data.models import Base
 from src.data.models.recruiter import Recruiter
 from src.data.models.organization import Organization
 from src.data.models.assessment import Assessment
-
+from src.data.models.transcript import Transcript
 config = context.config
 
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
