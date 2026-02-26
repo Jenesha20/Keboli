@@ -5,7 +5,7 @@ from src.api.rest.app import api_router
 from src.config.settings import settings
 from src.observability.logging.logger import logger
 
-app = FastAPI()
+app = FastAPI() 
 
 app.add_middleware(
     CORSMiddleware,
