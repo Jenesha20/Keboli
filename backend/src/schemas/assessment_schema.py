@@ -11,6 +11,7 @@ class AssessmentBase(BaseModel):
     difficulty_level: DifficultyLevel = DifficultyLevel.MEDIUM
     max_attempts: int = Field(1, ge=1, le=5)
     is_active: bool = True
+    skill_graph: Optional[dict] = None
 
 
 class AssessmentCreate(AssessmentBase):

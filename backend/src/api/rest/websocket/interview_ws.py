@@ -276,11 +276,17 @@ router = APIRouter()
 async def interview_ws(ws: WebSocket):
     await ws.accept()
     session_id = ws.query_params.get("session_id")
+    assessment_id = ws.query_params.get("assessment_id")
     if not session_id:
         session_id = uuid4()
         print(f"Generated new session_id: {session_id}")    
+    if not assessment_id or assessment_id == "default_assessment":
+        print("Warning: assessment_id not provided in query params, using default")
+        # Use a known default assessment ID or a valid UUID format to avoid 422
+        assessment_id = "859f91cc-660d-4a1a-91a7-3238886a8e1d" 
+
     async for db in get_db():
-        service = InterviewService(db,session_id)
+        service = InterviewService(db, session_id, assessment_id)
         stt_task = asyncio.create_task(service.start(ws))
         try:
             while True:

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import DateTime, ForeignKey, String, Integer, Boolean, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.data.models.base import Base
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
@@ -25,6 +25,7 @@ class Assessment(Base):
         nullable=False,
         server_default=DifficultyLevel.MEDIUM.value
     )
+    skill_graph: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
