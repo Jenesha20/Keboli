@@ -12,11 +12,12 @@ export interface AssessmentBase {
   difficulty_level: DifficultyLevel;
   max_attempts: number;
   is_active: boolean;
+  skill_graph?: any;
 }
 
-export interface AssessmentCreate extends AssessmentBase {}
+export interface AssessmentCreate extends AssessmentBase { }
 
-export interface AssessmentUpdate extends Partial<AssessmentBase> {}
+export interface AssessmentUpdate extends Partial<AssessmentBase> { }
 
 export interface AssessmentResponse extends AssessmentBase {
   id: string;

@@ -5,7 +5,7 @@ import { store } from './app/store'
 import { BrowserRouter } from 'react-router-dom'
 import { AppProviders } from './app/providers'
 import './index.css'
-import App from './App.tsx'
+import App from './App'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
