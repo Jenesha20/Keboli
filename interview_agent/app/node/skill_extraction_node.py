@@ -9,7 +9,7 @@ async def skill_extraction_node(state: InterviewState):
     if not assessment_id:
         return state
     
-    assessment = keboli_client.get_assessment(assessment_id)
+    assessment = await keboli_client.get_assessment(assessment_id)
     skill_graph = assessment.get("skill_graph")
 
     if not skill_graph:
@@ -23,7 +23,7 @@ async def skill_extraction_node(state: InterviewState):
         
         skill_graph = result.model_dump()
         
-        keboli_client.update_assessment_skills(assessment_id, skill_graph)
+        await keboli_client.update_assessment_skills(assessment_id, skill_graph)
     
     return {
         "skill_graph": skill_graph,

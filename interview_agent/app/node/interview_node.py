@@ -63,15 +63,27 @@ async def interview_node(state: InterviewState):
             "should_nudge": True
         }
 
+    # --- Completion Check ---
+    # 1. Check if candidate wants to end
+    if last_human_message and any(ext in last_human_message.lower() for ext in ["goodbye", "end interview", "i'm done", "exit"]):
+        return {
+            "messages": [AIMessage(content="Thank you for your time. The interview is now complete. Best of luck!")],
+            "is_completed": True
+        }
+
     elapsed_minutes = state.get("elapsed_time_seconds", 0) // 60
     if elapsed_minutes >= state.get("total_duration_minutes", 30):
         return {
-            "messages": [AIMessage(content="We have reached the end of our allotted time. Thank you for your time today.")],
+            "messages": [AIMessage(content="We have reached the end of our allotted time. Thank you for your time today. Goodbye.")],
             "is_completed": True
         }
 
     response = await llm.ainvoke(prompt)
     
+    # Check if the AI itself decided to wrap up (e.g. if it said its goodbye)
+    ai_resp_lower = response.content.lower()
+    auto_complete = any(phrase in ai_resp_lower for phrase in ["interview is complete", "all the questions i have", "good luck with your application"])
+
     next_depth = current_depth + 1
     next_idx = current_idx
     if next_depth > 2:
@@ -82,5 +94,6 @@ async def interview_node(state: InterviewState):
         "messages": [AIMessage(content=response.content)],
         "current_skill_index": next_idx,
         "current_skill_depth": next_depth,
-        "should_nudge": False 
+        "should_nudge": False,
+        "is_completed": auto_complete or (next_idx >= len(skills))
     }
