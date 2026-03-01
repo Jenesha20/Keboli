@@ -23,6 +23,7 @@ class AssessmentUpdate(BaseModel):
     job_description: Optional[str] = None
     duration_minutes: Optional[int] = None
     passing_score: Optional[int] = None
+    difficulty_level: Optional[DifficultyLevel] = None
     max_attempts: Optional[int] = None
     is_active: Optional[bool] = None
 

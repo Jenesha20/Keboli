@@ -115,7 +115,28 @@ async def update_assessment(
         raise HTTPException(status_code=404, detail="Assessment not found")
     
     update_data = {k: v for k, v in payload.dict(exclude_unset=True).items()}
-    return await service.repo.update(assessment_id, **update_data)
+    updated = await service.repo.update(assessment_id, **update_data)
+    await db.commit()
+    await db.refresh(updated)
+    return updated
+
+@router.delete("/{assessment_id}")
+async def delete_assessment(
+    assessment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: Recruiter = Depends(get_current_recruiter)
+):
+    service = AssessmentService(db)
+    assessment = await service.repo.get_by_id(assessment_id)
+    
+    if not assessment or assessment.org_id != current_user.org_id:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    # Soft delete: mark as inactive
+    updated = await service.repo.update(assessment_id, is_active=False)
+    await db.commit()
+    await db.refresh(updated)
+    return updated
 
 
 
