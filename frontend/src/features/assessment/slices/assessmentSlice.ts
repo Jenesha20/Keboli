@@ -60,6 +60,17 @@ export const toggleAssessmentStatus = createAsyncThunk(
   }
 );
 
+export const deleteAssessment = createAsyncThunk(
+  'assessment/deleteAssessment',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      return await assessmentService.deleteAssessment(id);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to delete assessment');
+    }
+  }
+);
+
 const assessmentSlice = createSlice({
   name: 'assessment',
   initialState,
@@ -105,6 +116,13 @@ const assessmentSlice = createSlice({
         const index = state.assessments.findIndex((a) => a.id === action.payload.id);
         if (index !== -1) {
           state.assessments[index] = action.payload;
+        }
+      })
+      // Delete Assessment (Soft Delete)
+      .addCase(deleteAssessment.fulfilled, (state, action) => {
+        const index = state.assessments.findIndex((a) => a.id === (action.payload as AssessmentResponse).id);
+        if (index !== -1) {
+          state.assessments[index] = action.payload as AssessmentResponse;
         }
       });
   },

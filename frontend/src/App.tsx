@@ -5,6 +5,8 @@ import ProtectedRoute from './features/auth/components/ProtectedRoute'
 import AssessmentManagement from './features/assessment/components/AssessmentManagement'
 import MainLayout from './components/layout/MainLayout'
 import CandidateInterviewLive from './features/interview/components/CandidateInterviewLive'
+import CandidateManagementPage from './features/candidate/CandidateManagementPage'
+import EvaluationReportPage from './features/evaluation/EvaluationReportPage'
 
 function App() {
   const location = useLocation()
@@ -51,7 +53,22 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/candidates" element={<div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest">Candidate Intelligence Module Coming Soon</div>} />
+        <Route
+          path="/candidates"
+          element={
+            <ProtectedRoute>
+              <CandidateManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/evaluation/:sessionId"
+          element={
+            <ProtectedRoute>
+              <EvaluationReportPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/interviews" element={<div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest">Interview Management Module Coming Soon</div>} />
         <Route path="/settings" element={<div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest">Platform Settings Coming Soon</div>} />
         {/* Default redirect for authenticated area */}

@@ -5,6 +5,7 @@ import {
   createAssessment,
   updateAssessment,
   toggleAssessmentStatus,
+  deleteAssessment,
   setCurrentAssessment
 } from '../slices/assessmentSlice';
 import type { AppDispatch, RootState } from '../../../app/store';
@@ -90,6 +91,12 @@ const AssessmentManagement: React.FC = () => {
 
   const handleToggleStatus = (id: string, isActive: boolean) => {
     dispatch(toggleAssessmentStatus({ id, isActive }));
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to mark this assessment as Inactive?')) {
+      dispatch(deleteAssessment(id));
+    }
   };
 
   const handleEditClick = (assessment: AssessmentResponse) => {
@@ -194,6 +201,7 @@ const AssessmentManagement: React.FC = () => {
             assessments={filteredAssessments}
             onEdit={handleEditClick}
             onToggleStatus={handleToggleStatus}
+            onDelete={handleDelete}
           />
         )}
       </div>

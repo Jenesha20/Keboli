@@ -53,4 +53,9 @@ export const assessmentService = {
     });
     return response.data;
   },
+
+  deleteAssessment: async (id: string): Promise<AssessmentResponse> => {
+    const response = await api.delete<AssessmentResponse>(`/assessment/${id}`);
+    return response.data;
+  },
 };
