@@ -81,12 +81,4 @@ class InvitationService:
         if invitation.status == InvitationStatus.EXPIRED or invitation.expires_at < datetime.now(timezone.utc):
              raise HTTPException(status_code=403, detail="Invitation has expired")
              
-        if invitation.status == InvitationStatus.CLICKED:
-             raise HTTPException(status_code=403, detail="This invitation link has already been used.")
-             
-        if invitation.status == InvitationStatus.SENT:
-            await self.repo.update(invitation.id, status=InvitationStatus.CLICKED)
-            await self.session.commit()
-            invitation.status = InvitationStatus.CLICKED
-            
         return invitation
