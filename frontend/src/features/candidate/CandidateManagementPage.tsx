@@ -162,6 +162,11 @@ export default function CandidateManagementPage() {
         }
     };
 
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        alert('Invitation link copied!');
+    };
+
     // UI Helpers
     const getStatusStyle = (status?: string) => {
         switch (status?.toUpperCase()) {
@@ -319,9 +324,21 @@ export default function CandidateManagementPage() {
                                                     </button>
                                                 )}
                                                 {c.latest_status === InvitationStatus.SENT && c.latest_invitation_id && (
-                                                    <button onClick={() => handleRevoke(c.latest_invitation_id!)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl" title="Revoke Link">
-                                                        <span className="material-symbols-outlined text-[20px]">block</span>
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                const inv = invitations.find(i => i.id === c.latest_invitation_id);
+                                                                if (inv) copyToClipboard(`${window.location.origin}/interview?token=${inv.token}`);
+                                                            }}
+                                                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+                                                            title="Copy Link"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[20px]">content_copy</span>
+                                                        </button>
+                                                        <button onClick={() => handleRevoke(c.latest_invitation_id!)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl" title="Revoke Link">
+                                                            <span className="material-symbols-outlined text-[20px]">block</span>
+                                                        </button>
+                                                    </>
                                                 )}
                                                 <button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl" title="Delete Profile">
                                                     <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -392,6 +409,19 @@ export default function CandidateManagementPage() {
                                     <div className="text-sm font-bold text-slate-600">
                                         {assessments.find(a => a.id === inv.assessment_id)?.title}
                                     </div>
+                                    {(inv.status === 'SENT' || inv.status === 'CLICKED') && (
+                                        <div className="mt-3 p-3 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between gap-3">
+                                            <code className="text-[10px] text-slate-500 truncate flex-1">
+                                                {window.location.origin}/interview?token={inv.token}
+                                            </code>
+                                            <button
+                                                onClick={() => copyToClipboard(`${window.location.origin}/interview?token=${inv.token}`)}
+                                                className="p-1.5 text-slate-400 hover:text-primary transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

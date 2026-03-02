@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createChunkedRecorder } from '../../../lib/mediaRecorder';
 import { createInterviewWebSocket } from '../../../lib/websocket';
+import api from '../../../lib/axios';
 
 // --- Types ---
 export type WSMessage =
@@ -17,8 +18,10 @@ const glassmorphism = "bg-white/5 backdrop-blur-2xl border border-white/10 shado
 
 const CandidateInterviewLive: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const assessmentId = searchParams.get('assessmentId') || '';
+  const token = searchParams.get('token') || '';
 
+  const [invitation, setInvitation] = useState<{ id: string, assessment_id: string } | null>(null);
+  const [isValidating, setIsValidating] = useState(!!token);
   const [connected, setConnected] = useState(false);
   const [humanText, setHumanText] = useState('');
   const [aiText, setAiText] = useState('');
@@ -32,11 +35,34 @@ const CandidateInterviewLive: React.FC = () => {
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef(false);
 
+  // 1. Validate Token on Mount
+  React.useEffect(() => {
+    if (!token) {
+      setClientError("No invitation token found in URL.");
+      setIsValidating(false);
+      return;
+    }
+
+    const validate = async () => {
+      try {
+        const response = await api.get(`/invitation/validate/${token}`);
+        setInvitation(response.data);
+      } catch (err: any) {
+        setClientError(err.response?.data?.detail || "Invalid or expired invitation.");
+      } finally {
+        setIsValidating(false);
+      }
+    };
+    validate();
+  }, [token]);
+
   const wsUrl = useMemo(() => {
+    if (!invitation) return '';
     const base = import.meta.env.VITE_API_WS_URL || 'ws://localhost:8000/api/ws/interview';
     const glue = base.includes('?') ? '&' : '?';
-    return `${base}${glue}assessment_id=${assessmentId}`;
-  }, [assessmentId]);
+    // Mapping: We pass BOTH invitation_id and assessment_id to the backend
+    return `${base}${glue}invitation_id=${invitation.id}&assessment_id=${invitation.assessment_id}`;
+  }, [invitation]);
 
   // Audio Playback Queue to prevent overlap
   const processAudioQueue = async () => {
@@ -160,10 +186,13 @@ const CandidateInterviewLive: React.FC = () => {
         </div>
 
         <div className="flex gap-4">
-          {!connected ? (
+          {isValidating ? (
+            <div className="px-6 py-2 text-sm opacity-50 italic">Validating invitation...</div>
+          ) : !connected ? (
             <button
               onClick={connect}
-              className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-all font-bold text-sm"
+              disabled={!invitation}
+              className={`px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-all font-bold text-sm ${!invitation ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               Start Session
             </button>
