@@ -40,7 +40,6 @@ async def interview_ws(ws: WebSocket):
             print(f"Websocket disconnected for session: {session_id}")
         finally:
             stt_task.cancel()
-            # Mark session as completed (partial if not finished by AI)
             await service.on_disconnect()
             service.close()
             break

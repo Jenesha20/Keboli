@@ -40,8 +40,6 @@ class InvitationService:
         await self.session.commit()
         await self.session.refresh(invitation)
         
-        
-        
         return {
             "invitation_id": invitation.id,
             "token": token,

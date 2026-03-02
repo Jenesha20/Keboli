@@ -17,6 +17,7 @@ class EvaluationCreate(BaseModel):
     admin_recommendation: Optional[HiringRecommendation] = None
     admin_notes: Optional[str] = None
     is_tie_winner: bool = False
+    detailed_analysis: Optional[Dict[str, Any]] = None
 
 class EvaluationResponse(EvaluationCreate):
     id: uuid.UUID

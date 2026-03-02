@@ -3,16 +3,24 @@ import asyncio
 import httpx
 from typing import Optional
 from fastapi import WebSocket
+import uuid
 from uuid import UUID
 from datetime import datetime
+from src.data.models.assessment import Assessment
 
 from src.handlers.audio.ffmpeg_pipe import PCMTranscoder
 from src.handlers.audio.deepgram_tts import deepgram_tts_bytes
 from src.handlers.audio.deepgram_stt import DeepgramSTT
 from src.core.ai.llm.groq_client import GroqLLMClient 
 from src.data.repositories.interview_transcript_repo import InterviewTranscriptRepository
-
-
+from src.data.models.interview_session import InterviewSession
+from src.data.models.invitation import Invitation
+from sqlalchemy import select
+from src.constants.enums import InterviewSessionStatus
+from sqlalchemy import update
+from sqlalchemy.orm import selectinload
+from src.constants.enums import InvitationStatus
+from sqlalchemy.orm import joinedload
 class InterviewService:
 
     def __init__(self, db, session_id: UUID, assessment_id: str, invitation_id: Optional[UUID] = None):
@@ -74,10 +82,7 @@ class InterviewService:
             return
         
         self.is_completed = True
-        # 1. Update session status in DB
-        from sqlalchemy import update
-        from src.data.models.interview_session import InterviewSession
-        from src.constants.enums import InterviewSessionStatus
+        
 
         query = (
             update(InterviewSession)
@@ -87,21 +92,18 @@ class InterviewService:
         await self.db.execute(query)
         await self.db.commit()
         
-        # 2. Fire and forget evaluation agent call if fully completed
         if auto_evaluate:
             asyncio.create_task(self._trigger_evaluation())
         else:
             print(f"[DEBUG] Session {self.session_id} ended partialy/disconnected. Admin needs to click generate report.")
 
     async def _heartbeat_loop(self):
-        from sqlalchemy import update
-        from src.data.models.interview_session import InterviewSession
+        
         
         print(f"[DEBUG] Starting heartbeat loop for session {self.session_id}")
         try:
             while not self.is_completed:
                 await asyncio.sleep(5)
-                # Update heartbeat and decrement remaining time (approximate)
                 query = (
                     update(InterviewSession)
                     .where(InterviewSession.id == self.session_id)
@@ -118,51 +120,82 @@ class InterviewService:
             print(f"[ERROR] Heartbeat error: {e}")
 
     async def start(self, ws: WebSocket):
-        from src.data.models.interview_session import InterviewSession
-        from src.data.models.invitation import Invitation
-        from sqlalchemy import select
-        from src.constants.enums import InterviewSessionStatus
+        
 
         print(f"[DEBUG] InterviewService.start for session {self.session_id}")
 
-        # 1. Ensure session exists in the DB
         session = await self.db.scalar(select(InterviewSession).where(InterviewSession.id == self.session_id))
         
-        if not session and self.invitation_id:
-            print(f"[DEBUG] Session {self.session_id} not found. Creating from invitation {self.invitation_id}...")
-            invitation = await self.db.get(Invitation, self.invitation_id)
-            if invitation:
-                from src.constants.enums import InvitationStatus
-                session = InterviewSession(
-                    id=self.session_id,
-                    invitation_id=self.invitation_id,
-                    candidate_id=invitation.candidate_id,
-                    status=InterviewSessionStatus.IN_PROGRESS,
-                    remaining_seconds=3600, # Default 1 hour
-                    started_at=datetime.utcnow()
+        if not session:
+            print(f"[DEBUG] Session {self.session_id} not found. Creating session...")
+            
+            duration_mins = 60
+            candidate_id = None
+            
+            if self.invitation_id:
+                
+                invitation = await self.db.scalar(
+                    select(Invitation)
+                    .options(selectinload(Invitation.assessment))
+                    .where(Invitation.id == self.invitation_id)
                 )
-                self.db.add(session)
                 
-                # Update invitation status to CLICKED only when interview starts
-                invitation.status = InvitationStatus.CLICKED
-                
-                print(f"[DEBUG] Created new interview session and marked invitation as CLICKED: {self.session_id}")
-            else:
-                print(f"[DEBUG] Error: Invitation {self.invitation_id} not found while creating session.")
+                if invitation:
+                    duration_mins = invitation.assessment.duration_minutes if invitation.assessment else 60
+                    candidate_id = invitation.candidate_id
+                    
+                    invitation.status = InvitationStatus.CLICKED
+                else:
+                    print(f"[DEBUG] Error: Invitation {self.invitation_id} not found.")
+            
+            elif self.assessment_id:
+                assessment = await self.db.get(Assessment, UUID(self.assessment_id) if isinstance(self.assessment_id, str) else self.assessment_id)
+                if assessment:
+                    duration_mins = assessment.duration_minutes
+                else:
+                    print(f"[DEBUG] Error: Assessment {self.assessment_id} not found.")
+            
+            if not candidate_id:
+                candidate_id = uuid.uuid4() 
+
+            session = InterviewSession(
+                id=self.session_id,
+                invitation_id=self.invitation_id,
+                candidate_id=candidate_id,
+                status=InterviewSessionStatus.IN_PROGRESS,
+                remaining_seconds=duration_mins * 60,
+                started_at=datetime.utcnow()
+            )
+            self.db.add(session)
+            print(f"[DEBUG] Created new interview session with {duration_mins} mins duration: {self.session_id}")
         elif session:
             print(f"[DEBUG] Session {self.session_id} exists. Updating status to IN_PROGRESS.")
             session.status = InterviewSessionStatus.IN_PROGRESS
             if not session.started_at:
                 session.started_at = datetime.utcnow()
+            
+        
+            if session.remaining_seconds == 3600 or session.remaining_seconds <= 0:
+                 
+                 
+                 asmt = None
+                 if session.invitation_id:
+                     inv = await self.db.scalar(select(Invitation).options(joinedload(Invitation.assessment)).where(Invitation.id == session.invitation_id))
+                     asmt = inv.assessment if inv else None
+                 elif self.assessment_id:
+                     asmt = await self.db.get(Assessment, UUID(self.assessment_id) if isinstance(self.assessment_id, str) else self.assessment_id)
+                 
+                 if asmt:
+                     if session.remaining_seconds == 3600:
+                        session.remaining_seconds = asmt.duration_minutes * 60
+                        print(f"[DEBUG] Corrected remaining_seconds to {session.remaining_seconds} for session {self.session_id}")
         
         print("[DEBUG] Committing session initialization...")
         await self.db.commit()
         print("[DEBUG] Session initialization committed.")
 
-        # Start heartbeat loop
         self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
-        # 2. Get the greeting from the Interview Agent
         print(f"[DEBUG] Calling Interview Agent for greeting at {self.agent_url}...")
         greeting_text, is_end = await self._get_agent_response()
         print(f"[DEBUG] Interview Agent returned greeting: {greeting_text}")

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import uuid
 from typing import List
+from src.data.models.invitation import Invitation
 
 from src.api.rest.dependencies import get_db, get_current_recruiter
 from src.data.models.evaluation import Evaluation
@@ -23,8 +24,6 @@ async def get_transcript_for_eval(session_id: uuid.UUID, db: AsyncSession = Depe
 
 @router.get("/session/{session_id}")
 async def get_session_details_for_eval(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    # Join through Invitation to get Assessment details
-    from src.data.models.invitation import Invitation
     query = (
         select(InterviewSession, Assessment)
         .join(Invitation, InterviewSession.invitation_id == Invitation.id)
@@ -52,7 +51,6 @@ async def post_evaluation_report(
     payload: EvaluationCreate, 
     db: AsyncSession = Depends(get_db)
 ):
-    # Upsert logic (checking for existing evaluation)
     existing = await db.scalar(select(Evaluation).where(Evaluation.session_id == session_id))
     
     if existing:
