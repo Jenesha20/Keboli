@@ -7,14 +7,12 @@ class KeboliClient:
 
     async def get_transcript(self, session_id: str):
         async with httpx.AsyncClient() as client:
-            # We will need to implement this endpoint in the main backend
             response = await client.get(f"{self.base_url}/evaluation/transcript/{session_id}")
             response.raise_for_status()
             return response.json()
 
     async def get_session_details(self, session_id: str):
         async with httpx.AsyncClient() as client:
-            # We will need to implement this endpoint in the main backend
             response = await client.get(f"{self.base_url}/evaluation/session/{session_id}")
             response.raise_for_status()
             return response.json()

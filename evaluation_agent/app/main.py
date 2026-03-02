@@ -8,11 +8,9 @@ app = FastAPI(title="Keboli Evaluation Agent", version="1.0.0")
 @app.post("/api/v1/evaluate/{session_id}")
 async def evaluate_candidate(session_id: str):
     try:
-        # 1. Fetch transcript and session/assessment details from main backend
         transcript_data = await keboli_client.get_transcript(session_id)
         session_details = await keboli_client.get_session_details(session_id)
         
-        # 2. Prepare state for LangGraph
         initial_state: EvaluationState = {
             "session_id": session_id,
             "transcript": transcript_data,
@@ -20,6 +18,7 @@ async def evaluate_candidate(session_id: str):
             "technical_analysis": None,
             "communication_analysis": None,
             "cultural_analysis": None,
+            "skill_scores": {},
             "scores": {},
             "summary": None,
             "explanation": None,
@@ -28,35 +27,41 @@ async def evaluate_candidate(session_id: str):
             "error": None
         }
         
-        # 3. Run evaluation through LangGraph pipeline
         result = await evaluation_app.ainvoke(initial_state)
         
         if result.get("error"):
             raise HTTPException(status_code=500, detail=result["error"])
             
-        # 4. Push results back to main backend
-        # Ensure recommendation is in lowercase to match backend Enums
+       
         recommendation = result.get("recommendation", "REJECT").lower()
         
+        scale = 20.0
         evaluation_payload = {
-            "technical_score": float(result["scores"]["technical"]),
-            "communication_score": float(result["scores"]["communication"]),
-            "confidence_score": float(result["scores"]["confidence"]),
-            "cultural_alignment_score": float(result["scores"]["cultural_fit"]),
-            "total_score": float(result["scores"]["total"]),
+            "technical_score": float(result["scores"]["technical"]) * scale,
+            "communication_score": float(result["scores"]["communication"]) * scale,
+            "confidence_score": float(result["scores"]["confidence"]) * scale,
+            "cultural_alignment_score": float(result["scores"]["cultural_fit"]) * scale,
+            "total_score": float(result["scores"]["total"]) * scale,
             "score_breakdown": {
                 "technical": result["scores"]["technical"],
                 "communication": result["scores"]["communication"],
                 "confidence": result["scores"]["confidence"],
                 "cultural_fit": result["scores"]["cultural_fit"],
-                "tie_breaker": float(result.get("tie_breaker_subscore", 0.0))
+                "tie_breaker": float(result.get("tie_breaker_subscore", 0.0)),
+                "skill_evaluations": result.get("skill_scores", {})
             },
             "ai_summary": result["summary"],
             "ai_explanation": result["explanation"],
             "hiring_recommendation": recommendation,
             "admin_recommendation": None,
             "admin_notes": None,
-            "is_tie_winner": False
+            "is_tie_winner": False,
+            "detailed_analysis": {
+                "skill_scores": result.get("skill_scores", {}),
+                "technical_analysis": result.get("technical_analysis"),
+                "communication_analysis": result.get("communication_analysis"),
+                "cultural_analysis": result.get("cultural_analysis")
+            }
         }
         
         print(f"Pushing evaluation for session {session_id}: {recommendation}")
