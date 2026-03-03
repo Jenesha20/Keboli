@@ -1,16 +1,56 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #197fe6;
-  --color-background-light: #f6f7f8;
-  --color-background-dark: #111921;
-  --font-display: Inter, sans-serif;
-  --radius-default: 0.25rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --color-primary: #4f46e5;
+  --color-primary-light: #6366f1;
+  --color-primary-dark: #3730a3;
+  --color-accent: #06b6d4;
+  --color-background-light: #f8fafc;
+  --color-background-dark: #0f172a;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius-default: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
   --radius-full: 9999px;
 }
 
+/* Base styles */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  font-family: var(--font-display);
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-background-light);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Material Symbols */
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;
@@ -23,4 +63,22 @@
   direction: ltr;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: 'liga';
+}
+
+/* Smooth transitions for interactive elements */
+button, a, input, select, textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Focus visible ring for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Selection color */
+::selection {
+  background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
 }

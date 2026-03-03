@@ -21,28 +21,33 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+            {/* Overlay */}
             <div
-                className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
                 onClick={onClose}
             />
 
-            <div className={`relative bg-white rounded-2xl shadow-xl w-full ${sizeClasses[size]} overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200`}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                    <h3 className="text-xl font-black tracking-tight text-slate-900">{title}</h3>
+            {/* Modal container */}
+            <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizeClasses[size]} overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-2 duration-300 border border-slate-200/60`}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-bold tracking-tight text-slate-900">{title}</h3>
                     <button
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-50 p-2 rounded-lg transition-colors"
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors"
                     >
                         <span className="material-symbols-outlined text-[20px]">close</span>
                     </button>
                 </div>
 
-                <div className="px-6 py-6 overflow-y-auto max-h-[70vh]">
+                {/* Content */}
+                <div className="px-6 py-5 overflow-y-auto max-h-[70vh] custom-scrollbar">
                     {children}
                 </div>
 
+                {/* Footer */}
                 {footer && (
-                    <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+                    <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
                         {footer}
                     </div>
                 )}

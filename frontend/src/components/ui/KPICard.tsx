@@ -13,14 +13,14 @@ interface KPICardProps {
 
 export default function KPICard({ title, value, icon, trend, className = '' }: KPICardProps) {
     return (
-        <div className={`bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4 ${className}`}>
+        <div className={`bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-4 group ${className}`}>
             <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center border border-slate-100">
+                <div className="w-11 h-11 rounded-xl bg-primary/8 text-primary flex items-center justify-center border border-primary/10 group-hover:bg-primary/12 transition-colors">
                     {icon}
                 </div>
                 {trend && (
-                    <div className={`flex items-center gap-1 text-xs font-bold ${trend.positive ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        <span className="material-symbols-outlined text-[16px]">
+                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${trend.positive ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+                        <span className="material-symbols-outlined text-[14px]">
                             {trend.positive ? 'trending_up' : 'trending_down'}
                         </span>
                         {trend.value}%
@@ -28,8 +28,8 @@ export default function KPICard({ title, value, icon, trend, className = '' }: K
                 )}
             </div>
             <div>
-                <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">{title}</p>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{value}</h3>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">{title}</p>
+                <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">{value}</h3>
             </div>
         </div>
     );

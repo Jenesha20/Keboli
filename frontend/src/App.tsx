@@ -3,17 +3,22 @@ import LoginPage from './features/auth/components/LoginPage'
 import RegisterPage from './features/auth/components/RegisterPage'
 import ProtectedRoute from './features/auth/components/ProtectedRoute'
 import AssessmentManagement from './features/assessment/components/AssessmentManagement'
+import DashboardPage from './features/dashboard/DashboardPage'
 import MainLayout from './components/layout/MainLayout'
 import CandidateInterviewLive from './features/interview/components/CandidateInterviewLive'
 import CandidateManagementPage from './features/candidate/CandidateManagementPage'
 import EvaluationReportPage from './features/evaluation/EvaluationReportPage'
+
+import InterviewWelcomePage from './features/interview/components/InterviewWelcomePage'
+import InterviewInstructionsPage from './features/interview/components/InterviewInstructionsPage'
+import InterviewTechCheckPage from './features/interview/components/InterviewTechCheckPage'
 
 function App() {
   const location = useLocation()
 
   // Full-screen routes that don't use the MainLayout
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/register'
-  const isInterviewRoute = location.pathname === '/interview'
+  const isCandidateFlow = location.pathname.startsWith('/candidate/') || location.pathname === '/interview'
 
   if (isAuthRoute) {
     return (
@@ -25,11 +30,15 @@ function App() {
     )
   }
 
-  if (isInterviewRoute) {
+  if (isCandidateFlow) {
     return (
       <Routes>
-        <Route path="/interview" element={<CandidateInterviewLive />} />
-        <Route path="*" element={<Navigate to="/interview" replace />} />
+        <Route path="/candidate/welcome" element={<InterviewWelcomePage />} />
+        <Route path="/candidate/instructions" element={<InterviewInstructionsPage />} />
+        <Route path="/candidate/tech-check" element={<InterviewTechCheckPage />} />
+        <Route path="/candidate/room" element={<CandidateInterviewLive />} />
+        <Route path="/interview" element={<Navigate to={`/candidate/welcome${location.search}`} replace />} />
+        <Route path="*" element={<Navigate to={`/candidate/welcome${location.search}`} replace />} />
       </Routes>
     )
   }
@@ -41,7 +50,7 @@ function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <AssessmentManagement />
+              <DashboardPage />
             </ProtectedRoute>
           }
         />

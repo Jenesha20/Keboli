@@ -46,22 +46,27 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
     }
   };
 
-  const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-slate-400";
-  const labelClass = "block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1";
+  const inputClass = "w-full bg-slate-50/80 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/50 transition-all placeholder:text-slate-400";
+  const labelClass = "block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 ml-0.5";
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-slate-200 p-10 md:p-14 rounded-[2.5rem] shadow-xl relative overflow-hidden animate-in zoom-in-95 duration-500">
-      <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-        <svg className="w-32 h-32 text-primary" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
-        </svg>
+    <form onSubmit={handleSubmit} className="bg-white border border-slate-200/80 p-8 md:p-10 rounded-2xl shadow-sm relative overflow-hidden animate-in zoom-in-[0.98] duration-400">
+      {/* Decorative top accent */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-indigo-500 to-violet-500" />
+
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+          <span className="material-symbols-outlined text-primary text-xl">{initialData ? 'edit_note' : 'add_circle'}</span>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
+            {initialData ? 'Update Assessment' : 'Create Assessment'}
+          </h2>
+          <p className="text-xs text-slate-400 font-medium mt-0.5">Fill in the details below to configure your assessment</p>
+        </div>
       </div>
 
-      <h2 className="text-4xl font-black mb-10 tracking-tight text-slate-900">
-        {initialData ? 'Update' : 'Initialize'} <span className="text-primary">Project</span>
-      </h2>
-
-      <div className="space-y-10">
+      <div className="space-y-6">
         <div>
           <label className={labelClass}>Assessment Title</label>
           <input
@@ -76,22 +81,22 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
         </div>
 
         <div>
-          <label className={labelClass}>Job Description Intelligence</label>
+          <label className={labelClass}>Job Description</label>
 
-          <div className="flex gap-4 mb-6">
+          <div className="flex gap-2 mb-4">
             <button
               type="button"
               onClick={() => { setJdMode('text'); setJdFile(null); }}
-              className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${jdMode === 'text' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 text-slate-400 border border-slate-200'}`}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all ${jdMode === 'text' ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:border-slate-300'}`}
             >
-              Raw Text
+              Paste Text
             </button>
             <button
               type="button"
               onClick={() => setJdMode('file')}
-              className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${jdMode === 'file' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 text-slate-400 border border-slate-200'}`}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all ${jdMode === 'file' ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:border-slate-300'}`}
             >
-              Document Upload
+              Upload Document
             </button>
           </div>
 
@@ -102,7 +107,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
               value={formData.job_description}
               onChange={handleChange}
               required
-              rows={6}
+              rows={5}
               className={`${inputClass} resize-none`}
             />
           ) : (
@@ -114,24 +119,22 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
                 onChange={(e) => setJdFile(e.target.files?.[0] ?? null)}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
-              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-14 text-center group-hover:border-primary/50 transition-all">
-                <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-5">
-                  <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+              <div className="bg-slate-50/80 border-2 border-dashed border-slate-200 rounded-xl p-10 text-center group-hover:border-primary/40 transition-all">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                  <span className="material-symbols-outlined text-slate-400 text-2xl">cloud_upload</span>
                 </div>
-                <p className="text-base font-bold text-slate-700">
-                  {jdFile ? jdFile.name : 'Drop Assessment Specification'}
+                <p className="text-sm font-semibold text-slate-700">
+                  {jdFile ? jdFile.name : 'Drop your file here or click to browse'}
                 </p>
-                <p className="text-xs mt-3 text-slate-400 font-medium tracking-wide">PDF, DOCX, or TXT (Max 5MB)</p>
+                <p className="text-xs mt-2 text-slate-400 font-medium">PDF, DOCX, or TXT (Max 5MB)</p>
               </div>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label className={labelClass}>Maximum Duration</label>
+            <label className={labelClass}>Duration</label>
             <div className="relative">
               <input
                 type="number"
@@ -142,11 +145,11 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
                 max="300"
                 className={inputClass}
               />
-              <span className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">Mins</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">mins</span>
             </div>
           </div>
           <div>
-            <label className={labelClass}>Target Pass Score</label>
+            <label className={labelClass}>Pass Score</label>
             <div className="relative">
               <input
                 type="number"
@@ -157,14 +160,14 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
                 max="100"
                 className={inputClass}
               />
-              <span className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">%</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">%</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label className={labelClass}>Evaluation Complexity</label>
+            <label className={labelClass}>Difficulty Level</label>
             <select
               name="difficulty_level"
               value={formData.difficulty_level}
@@ -173,11 +176,11 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
             >
               <option value="easy">Elementary</option>
               <option value="medium">Professional</option>
-              <option value="hard">Expert / Master</option>
+              <option value="hard">Expert</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Retake Policy</label>
+            <label className={labelClass}>Max Attempts</label>
             <div className="relative">
               <input
                 type="number"
@@ -188,26 +191,26 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
                 max="5"
                 className={inputClass}
               />
-              <span className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">Attempts</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">attempts</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-end gap-5 mt-16 pt-10 border-t border-slate-100">
+      <div className="flex flex-col md:flex-row justify-end gap-3 mt-10 pt-6 border-t border-slate-100">
         <button
           type="button"
           onClick={onCancel}
-          className="px-10 py-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-500 text-sm font-bold uppercase tracking-widest transition-all border border-slate-200"
+          className="px-6 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold transition-all border border-slate-200 hover:border-slate-300"
         >
-          Discard
+          Cancel
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-14 py-4 rounded-2xl bg-primary hover:bg-primary/90 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
+          className="px-8 py-3 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-semibold transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
         >
-          {isSubmitting ? 'Syncing...' : initialData ? 'Commit Changes' : 'Deploy Assessment'}
+          {isSubmitting ? 'Saving...' : initialData ? 'Update Assessment' : 'Create Assessment'}
         </button>
       </div>
     </form>

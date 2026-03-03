@@ -123,40 +123,40 @@ const AssessmentManagement: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">Assessment Management</h1>
-          <p className="text-slate-500 font-medium mt-1">Configure and manage your AI-powered candidate screenings.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Assessments</h1>
+          <p className="text-slate-500 font-medium text-sm mt-1">Configure and manage your AI-powered candidate screenings.</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-6 py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-95"
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98] text-sm"
         >
-          <span className="material-symbols-outlined text-xl">add</span>
+          <span className="material-symbols-outlined text-lg">add</span>
           Create Assessment
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="relative flex-1 min-w-[300px] group">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+      <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="relative flex-1 min-w-[280px] group">
+          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-primary transition-colors">search</span>
           <input
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all placeholder:text-slate-400 font-medium"
-            placeholder="Filter by name, tags or description..."
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/15 focus:border-primary/50 outline-none transition-all placeholder:text-slate-400 font-medium"
+            placeholder="Filter by name or description..."
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden xl:block">Status</label>
             <select
-              className="text-sm font-bold bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary py-2.5 pl-4 pr-10 outline-none cursor-pointer hover:border-slate-300 transition-all"
+              className="text-sm font-medium bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary py-2 pl-3 pr-8 outline-none cursor-pointer hover:border-slate-300 transition-all"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -166,10 +166,10 @@ const AssessmentManagement: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sort By</label>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden xl:block">Sort</label>
             <select
-              className="text-sm font-bold bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary py-2.5 pl-4 pr-10 outline-none cursor-pointer hover:border-slate-300 transition-all"
+              className="text-sm font-medium bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary py-2 pl-3 pr-8 outline-none cursor-pointer hover:border-slate-300 transition-all"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
             >
@@ -183,8 +183,8 @@ const AssessmentManagement: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 font-medium flex items-center gap-3">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+        <div className="p-4 bg-rose-50 border border-rose-200/80 rounded-xl text-rose-600 font-medium flex items-center gap-3 text-sm">
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
           {error}
         </div>
       )}
@@ -192,9 +192,9 @@ const AssessmentManagement: React.FC = () => {
       {/* Content */}
       <div className="relative">
         {loading && assessments.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-3xl p-32 text-center shadow-sm">
-            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-6" />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Querying recruitment intelligence...</p>
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-24 text-center shadow-sm">
+            <div className="w-12 h-12 border-[3px] border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-5" />
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Loading assessments...</p>
           </div>
         ) : (
           <AssessmentList

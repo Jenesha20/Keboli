@@ -1,5 +1,6 @@
 import api from '../../../lib/axios';
-import type { Candidate } from '../../candidate/services/candidateService';
+import type { Candidate } from './candidateService';
+import type { AssessmentResponse } from '../../assessment/types';
 
 export enum InvitationStatus {
     SENT = "sent",
@@ -17,6 +18,7 @@ export interface Invitation {
     status: InvitationStatus;
     sent_at: string;
     candidate?: Candidate;
+    assessment?: AssessmentResponse;
 }
 
 export interface InvitationCreate {
