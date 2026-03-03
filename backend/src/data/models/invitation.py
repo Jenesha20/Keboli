@@ -35,3 +35,26 @@ class Invitation(Base):
         # Sort by creation time descending and get the first one
         sorted_sessions = sorted(self.sessions, key=lambda s: s.created_at, reverse=True)
         return sorted_sessions[0].id
+
+    @property
+    def total_score(self) -> Optional[float]:
+        if not self.sessions:
+            return None
+        sorted_sessions = sorted(self.sessions, key=lambda s: s.created_at, reverse=True)
+        latest = sorted_sessions[0]
+        return float(latest.evaluation.total_score) if latest.evaluation and latest.evaluation.total_score is not None else None
+
+    @property
+    def hiring_recommendation(self) -> Optional[str]:
+        if not self.sessions:
+            return None
+        sorted_sessions = sorted(self.sessions, key=lambda s: s.created_at, reverse=True)
+        latest = sorted_sessions[0]
+        return latest.evaluation.hiring_recommendation.value if latest.evaluation and latest.evaluation.hiring_recommendation else None
+
+    @property
+    def latest_session_status(self) -> Optional[str]:
+        if not self.sessions:
+            return None
+        sorted_sessions = sorted(self.sessions, key=lambda s: s.created_at, reverse=True)
+        return sorted_sessions[0].status.value if sorted_sessions[0].status else None

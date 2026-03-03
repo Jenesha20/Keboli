@@ -17,21 +17,32 @@ class InvitationRepository:
         return instance
 
     async def get_by_id(self, invitation_id: uuid.UUID) -> Optional[Invitation]:
-        return await self.session.get(Invitation, invitation_id)
+        query = (
+            select(Invitation)
+            .where(Invitation.id == invitation_id)
+            .options(joinedload(Invitation.candidate), joinedload(Invitation.assessment))
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
 
     async def get_by_token(self, token: str) -> Optional[Invitation]:
-        query = select(Invitation).where(Invitation.token == token)
+        query = (
+            select(Invitation)
+            .where(Invitation.token == token)
+            .options(joinedload(Invitation.candidate), joinedload(Invitation.assessment))
+        )
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def get_multi_by_org(self, org_id: uuid.UUID) -> List[Invitation]:
+        from src.data.models.interview_session import InterviewSession
         query = (
             select(Invitation)
             .join(Candidate)
             .where(Candidate.org_id == org_id)
             .options(
                 joinedload(Invitation.candidate),
-                selectinload(Invitation.sessions)
+                selectinload(Invitation.sessions).selectinload(InterviewSession.evaluation)
             )
             .order_by(Invitation.sent_at.desc())
         )

@@ -19,6 +19,9 @@ class InvitationResponse(BaseModel):
     status: InvitationStatus
     sent_at: datetime
     latest_session_id: Optional[uuid.UUID] = None
+    latest_session_status: Optional[str] = None
+    total_score: Optional[float] = None
+    hiring_recommendation: Optional[str] = None
     
     candidate: Optional[CandidateResponse] = None
 

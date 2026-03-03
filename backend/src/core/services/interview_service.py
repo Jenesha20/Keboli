@@ -41,6 +41,7 @@ class InterviewService:
         
         self.is_completed = False
         self.heartbeat_task = None
+        self.db_lock = asyncio.Lock()
 
     async def _get_agent_response(self, last_message: Optional[str] = None) -> tuple[str, bool]:
         payload = {
@@ -84,13 +85,14 @@ class InterviewService:
         self.is_completed = True
         
 
-        query = (
-            update(InterviewSession)
-            .where(InterviewSession.id == self.session_id)
-            .values(status=InterviewSessionStatus.COMPLETED, completed_at=datetime.utcnow())
-        )
-        await self.db.execute(query)
-        await self.db.commit()
+        async with self.db_lock:
+            query = (
+                update(InterviewSession)
+                .where(InterviewSession.id == self.session_id)
+                .values(status=InterviewSessionStatus.COMPLETED, completed_at=datetime.utcnow())
+            )
+            await self.db.execute(query)
+            await self.db.commit()
         
         if auto_evaluate:
             asyncio.create_task(self._trigger_evaluation())
@@ -104,16 +106,17 @@ class InterviewService:
         try:
             while not self.is_completed:
                 await asyncio.sleep(5)
-                query = (
-                    update(InterviewSession)
-                    .where(InterviewSession.id == self.session_id)
-                    .values(
-                        last_heartbeat=datetime.utcnow(),
-                        remaining_seconds=InterviewSession.remaining_seconds - 5
+                async with self.db_lock:
+                    query = (
+                        update(InterviewSession)
+                        .where(InterviewSession.id == self.session_id)
+                        .values(
+                            last_heartbeat=datetime.utcnow(),
+                            remaining_seconds=InterviewSession.remaining_seconds - 5
+                        )
                     )
-                )
-                await self.db.execute(query)
-                await self.db.commit()
+                    await self.db.execute(query)
+                    await self.db.commit()
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -124,75 +127,76 @@ class InterviewService:
 
         print(f"[DEBUG] InterviewService.start for session {self.session_id}")
 
-        session = await self.db.scalar(select(InterviewSession).where(InterviewSession.id == self.session_id))
-        
-        if not session:
-            print(f"[DEBUG] Session {self.session_id} not found. Creating session...")
+        async with self.db_lock:
+            session = await self.db.scalar(select(InterviewSession).where(InterviewSession.id == self.session_id))
             
-            duration_mins = 60
-            candidate_id = None
-            
-            if self.invitation_id:
+            if not session:
+                print(f"[DEBUG] Session {self.session_id} not found. Creating session...")
                 
-                invitation = await self.db.scalar(
-                    select(Invitation)
-                    .options(selectinload(Invitation.assessment))
-                    .where(Invitation.id == self.invitation_id)
-                )
+                duration_mins = 60
+                candidate_id = None
                 
-                if invitation:
-                    duration_mins = invitation.assessment.duration_minutes if invitation.assessment else 60
-                    candidate_id = invitation.candidate_id
+                if self.invitation_id:
                     
-                    invitation.status = InvitationStatus.CLICKED
-                else:
-                    print(f"[DEBUG] Error: Invitation {self.invitation_id} not found.")
-            
-            elif self.assessment_id:
-                assessment = await self.db.get(Assessment, UUID(self.assessment_id) if isinstance(self.assessment_id, str) else self.assessment_id)
-                if assessment:
-                    duration_mins = assessment.duration_minutes
-                else:
-                    print(f"[DEBUG] Error: Assessment {self.assessment_id} not found.")
-            
-            if not candidate_id:
-                candidate_id = uuid.uuid4() 
+                    invitation = await self.db.scalar(
+                        select(Invitation)
+                        .options(selectinload(Invitation.assessment))
+                        .where(Invitation.id == self.invitation_id)
+                    )
+                    
+                    if invitation:
+                        duration_mins = invitation.assessment.duration_minutes if invitation.assessment else 60
+                        candidate_id = invitation.candidate_id
+                        
+                        invitation.status = InvitationStatus.CLICKED
+                    else:
+                        print(f"[DEBUG] Error: Invitation {self.invitation_id} not found.")
+                
+                elif self.assessment_id:
+                    assessment = await self.db.get(Assessment, UUID(self.assessment_id) if isinstance(self.assessment_id, str) else self.assessment_id)
+                    if assessment:
+                        duration_mins = assessment.duration_minutes
+                    else:
+                        print(f"[DEBUG] Error: Assessment {self.assessment_id} not found.")
+                
+                if not candidate_id:
+                    candidate_id = uuid.uuid4() 
 
-            session = InterviewSession(
-                id=self.session_id,
-                invitation_id=self.invitation_id,
-                candidate_id=candidate_id,
-                status=InterviewSessionStatus.IN_PROGRESS,
-                remaining_seconds=duration_mins * 60,
-                started_at=datetime.utcnow()
-            )
-            self.db.add(session)
-            print(f"[DEBUG] Created new interview session with {duration_mins} mins duration: {self.session_id}")
-        elif session:
-            print(f"[DEBUG] Session {self.session_id} exists. Updating status to IN_PROGRESS.")
-            session.status = InterviewSessionStatus.IN_PROGRESS
-            if not session.started_at:
-                session.started_at = datetime.utcnow()
+                session = InterviewSession(
+                    id=self.session_id,
+                    invitation_id=self.invitation_id,
+                    candidate_id=candidate_id,
+                    status=InterviewSessionStatus.IN_PROGRESS,
+                    remaining_seconds=duration_mins * 60,
+                    started_at=datetime.utcnow()
+                )
+                self.db.add(session)
+                print(f"[DEBUG] Created new interview session with {duration_mins} mins duration: {self.session_id}")
+            elif session:
+                print(f"[DEBUG] Session {self.session_id} exists. Updating status to IN_PROGRESS.")
+                session.status = InterviewSessionStatus.IN_PROGRESS
+                if not session.started_at:
+                    session.started_at = datetime.utcnow()
+                
             
-        
-            if session.remaining_seconds == 3600 or session.remaining_seconds <= 0:
-                 
-                 
-                 asmt = None
-                 if session.invitation_id:
-                     inv = await self.db.scalar(select(Invitation).options(joinedload(Invitation.assessment)).where(Invitation.id == session.invitation_id))
-                     asmt = inv.assessment if inv else None
-                 elif self.assessment_id:
-                     asmt = await self.db.get(Assessment, UUID(self.assessment_id) if isinstance(self.assessment_id, str) else self.assessment_id)
-                 
-                 if asmt:
-                     if session.remaining_seconds == 3600:
-                        session.remaining_seconds = asmt.duration_minutes * 60
-                        print(f"[DEBUG] Corrected remaining_seconds to {session.remaining_seconds} for session {self.session_id}")
-        
-        print("[DEBUG] Committing session initialization...")
-        await self.db.commit()
-        print("[DEBUG] Session initialization committed.")
+                if session.remaining_seconds == 3600 or session.remaining_seconds <= 0:
+                     
+                     
+                     asmt = None
+                     if session.invitation_id:
+                         inv = await self.db.scalar(select(Invitation).options(joinedload(Invitation.assessment)).where(Invitation.id == session.invitation_id))
+                         asmt = inv.assessment if inv else None
+                     elif self.assessment_id:
+                         asmt = await self.db.get(Assessment, UUID(self.assessment_id) if isinstance(self.assessment_id, str) else self.assessment_id)
+                     
+                     if asmt:
+                         if session.remaining_seconds == 3600:
+                            session.remaining_seconds = asmt.duration_minutes * 60
+                            print(f"[DEBUG] Corrected remaining_seconds to {session.remaining_seconds} for session {self.session_id}")
+            
+            print("[DEBUG] Committing session initialization...")
+            await self.db.commit()
+            print("[DEBUG] Session initialization committed.")
 
         self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
@@ -201,11 +205,12 @@ class InterviewService:
         print(f"[DEBUG] Interview Agent returned greeting: {greeting_text}")
         
         print("[DEBUG] Saving interviewer turn to transcript repo...")
-        await self.transcript_repo.append_turn(
-            self.session_id,
-            "interviewer",
-            greeting_text
-        )
+        async with self.db_lock:
+            await self.transcript_repo.append_turn(
+                self.session_id,
+                "interviewer",
+                greeting_text
+            )
         
         print("[DEBUG] Sending greeting to websocket...")
         await ws.send_text(json.dumps({"type": "tts_start", "text": greeting_text}))
@@ -225,22 +230,24 @@ class InterviewService:
             }))
             
             print("[DEBUG] Appending candidate turn to transcript repo...")
-            await self.transcript_repo.append_turn(
-                self.session_id,
-                "candidate",
-                full
-            )
+            async with self.db_lock:
+                await self.transcript_repo.append_turn(
+                    self.session_id,
+                    "candidate",
+                    full
+                )
             
             print(f"[DEBUG] Calling Interview Agent for response to: {full}")
             llm_text, is_end = await self._get_agent_response(full)
             
             print(f"[DEBUG] Agent Response (is_end={is_end}): {llm_text}")
             
-            await self.transcript_repo.append_turn(
-                self.session_id,
-                "interviewer",
-                llm_text
-            )
+            async with self.db_lock:
+                await self.transcript_repo.append_turn(
+                    self.session_id,
+                    "interviewer",
+                    llm_text
+                )
             
             await ws.send_text(json.dumps({"type": "tts_start", "text": llm_text}))
             audio = await deepgram_tts_bytes(llm_text)

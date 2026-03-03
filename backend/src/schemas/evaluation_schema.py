@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from src.constants.enums import HiringRecommendation
 
 class EvaluationCreate(BaseModel):
@@ -31,3 +31,9 @@ class EvaluationUpdate(BaseModel):
     admin_recommendation: Optional[HiringRecommendation] = None
     admin_notes: Optional[str] = None
     is_tie_winner: Optional[bool] = None
+
+class EvaluationReportResponse(BaseModel):
+    evaluation: Optional[EvaluationResponse] = None
+    transcript: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(from_attributes=True)
