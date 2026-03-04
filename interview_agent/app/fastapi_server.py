@@ -31,7 +31,9 @@ async def chat(request: InterviewTurnRequest):
             "current_skill_index": 0,
             "current_skill_depth": 0,
             "elapsed_time_seconds": 0,
-            "is_completed": False
+            "is_completed": False,
+            "conversation_phase": "greeting",
+            "previous_skill_name": None,
         }
 
     if request.last_message:

@@ -20,6 +20,11 @@ class InterviewState(TypedDict):
     total_duration_minutes: int
     elapsed_time_seconds: int
     
+    # Conversation phase tracking
+    # "greeting" -> "warmup" -> "interview" -> "closing"
+    conversation_phase: str
+    previous_skill_name: Optional[str]
+    
     scores: List[SkillScore]
     final_recommendation: Optional[str]
     

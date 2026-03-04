@@ -5,10 +5,15 @@ from app.prompt_manager import SKILL_EXTRACTION_PROMPT, SkillGraph
 from langchain_core.prompts import ChatPromptTemplate
 
 async def skill_extraction_node(state: InterviewState):
+    # If skills are already in state, just pass through
+    if state.get("skill_graph"):
+        return state
+
     assessment_id = state.get("assessment_id")
     if not assessment_id:
         return state
     
+    print(f"Fetching assessment {assessment_id} for skill extraction...")
     assessment = await keboli_client.get_assessment(assessment_id)
     skill_graph = assessment.get("skill_graph")
 
