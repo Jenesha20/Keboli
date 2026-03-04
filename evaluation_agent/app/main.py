@@ -19,6 +19,7 @@ async def evaluate_candidate(session_id: str):
             "communication_analysis": None,
             "cultural_analysis": None,
             "skill_scores": {},
+            "per_skill_scores": {},
             "scores": {},
             "summary": None,
             "explanation": None,
@@ -36,19 +37,34 @@ async def evaluate_candidate(session_id: str):
         recommendation = result.get("recommendation", "REJECT").lower()
         
         scale = 20.0
+        
+        # Extract per-skill scores (0-100 format) for admin display
+        per_skill_scores = result.get("per_skill_scores", {})
+        
+        # Extract enhanced sub-scores
+        scores = result.get("scores", {})
+        comm_sub_scores = scores.get("communication_sub_scores", {})
+        behavioral_rubric = scores.get("behavioral_rubric", {})
+        
         evaluation_payload = {
-            "technical_score": float(result["scores"]["technical"]) * scale,
-            "communication_score": float(result["scores"]["communication"]) * scale,
-            "confidence_score": float(result["scores"]["confidence"]) * scale,
-            "cultural_alignment_score": float(result["scores"]["cultural_fit"]) * scale,
-            "total_score": float(result["scores"]["total"]) * scale,
+            "technical_score": float(scores.get("technical", 0)) * scale,
+            "communication_score": float(scores.get("communication", 0)) * scale,
+            "confidence_score": float(scores.get("confidence", 0)) * scale,
+            "cultural_alignment_score": float(scores.get("cultural_fit", 0)) * scale,
+            "total_score": float(scores.get("total", 0)) * scale,
             "score_breakdown": {
-                "technical": result["scores"]["technical"],
-                "communication": result["scores"]["communication"],
-                "confidence": result["scores"]["confidence"],
-                "cultural_fit": result["scores"]["cultural_fit"],
+                "technical": scores.get("technical", 0),
+                "communication": scores.get("communication", 0),
+                "confidence": scores.get("confidence", 0),
+                "cultural_fit": scores.get("cultural_fit", 0),
                 "tie_breaker": float(result.get("tie_breaker_subscore", 0.0)),
-                "skill_evaluations": result.get("skill_scores", {})
+                "skill_evaluations": result.get("skill_scores", {}),
+                # Per-skill scores in admin-friendly format: {"React": 65, "SQL": 40, ...}
+                "per_skill_scores": per_skill_scores,
+                # Enhanced communication sub-scores
+                "communication_details": comm_sub_scores,
+                # Behavioral rubric dimension scores
+                "behavioral_rubric": behavioral_rubric,
             },
             "ai_summary": result["summary"],
             "ai_explanation": result["explanation"],
@@ -58,6 +74,7 @@ async def evaluate_candidate(session_id: str):
             "is_tie_winner": False,
             "detailed_analysis": {
                 "skill_scores": result.get("skill_scores", {}),
+                "per_skill_scores": per_skill_scores,
                 "technical_analysis": result.get("technical_analysis"),
                 "communication_analysis": result.get("communication_analysis"),
                 "cultural_analysis": result.get("cultural_analysis")
@@ -65,6 +82,7 @@ async def evaluate_candidate(session_id: str):
         }
         
         print(f"Pushing evaluation for session {session_id}: {recommendation}")
+        print(f"Per-skill scores: {per_skill_scores}")
         try:
             resp = await keboli_client.post_evaluation(session_id, evaluation_payload)
             print("Successfully posted evaluation to backend.")

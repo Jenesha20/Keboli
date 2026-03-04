@@ -57,7 +57,7 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         vad=silero.VAD.load(
             min_speech_duration=0.3,
-            min_silence_duration=0.8, # Increased for stability
+            min_silence_duration=0.8, 
             prefix_padding_duration=0.2,
         ),
 
@@ -72,14 +72,12 @@ async def entrypoint(ctx: JobContext):
             model="aura-asteria-en",
         ),
 
-        # Use semantic turn detection
         turn_detection=MultilingualModel(),
         
-        # Improve interruption handling
         allow_interruptions=True,
-        min_endpointing_delay=1.0, # Increased for stability
-        max_endpointing_delay=3.0, # Increased for stability
-        min_interruption_duration=0.5, # Less sensitive to noise
+        min_endpointing_delay=1.0,
+        max_endpointing_delay=3.0, 
+        min_interruption_duration=0.5, 
         discard_audio_if_uninterruptible=True,
     )
 

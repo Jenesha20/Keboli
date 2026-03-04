@@ -5,7 +5,6 @@ from app.prompt_manager import SKILL_EXTRACTION_PROMPT, SkillGraph
 from langchain_core.prompts import ChatPromptTemplate
 
 async def skill_extraction_node(state: InterviewState):
-    # If skills are already in state, just pass through
     if state.get("skill_graph"):
         return state
 

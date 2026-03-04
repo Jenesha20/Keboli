@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import AsyncIterable
 
 from livekit.agents import llm
@@ -26,6 +27,7 @@ class InterviewLLM(llm.LLM):
         self._assessment_id = assessment_id
         self._state: dict | None = None
         self._initialized = False
+        self._start_time: float | None = None
 
     async def initialize(self):
         if self._initialized:
@@ -45,6 +47,7 @@ class InterviewLLM(llm.LLM):
 
         self._state = initial_state
         self._initialized = True
+        self._start_time = time.time()
 
     def chat(
         self,
@@ -74,6 +77,11 @@ class InterviewLLM(llm.LLM):
             else:
                 self._state[key] = value
 
+    def get_elapsed_seconds(self) -> int:
+        if self._start_time is None:
+            return 0
+        return int(time.time() - self._start_time)
+
 
 class InterviewLLMStream(llm.LLMStream):
     def __init__(
@@ -95,11 +103,18 @@ class InterviewLLMStream(llm.LLMStream):
 
     async def _run(self) -> None:
         try:
+            self._state["elapsed_time_seconds"] = self._interview_llm.get_elapsed_seconds()
+
             latest_user_msg = ""
+            with open("/tmp/keboli_debug.log", "a") as f:
+                f.write(f"\n--- Chat Turn ---\n")
+                f.write(f"Chat Context Items: {len(self._chat_ctx.items)}\n")
+                for i, msg in enumerate(self._chat_ctx.items):
+                    f.write(f"Item {i}: role={msg.role} (type={type(msg.role)}), content_type={type(msg.content)}\n")
+            
             for msg in reversed(self._chat_ctx.items):
-                if not hasattr(msg, "role"):
-                    continue
-                if msg.role == "user":
+                role_str = str(msg.role).lower()
+                if "user" in role_str or "human" in role_str:
                     if isinstance(msg.content, str):
                         latest_user_msg = msg.content
                     elif isinstance(msg.content, list):
@@ -107,12 +122,26 @@ class InterviewLLMStream(llm.LLMStream):
                             if hasattr(part, "text"):
                                 latest_user_msg = part.text
                                 break
+                            elif isinstance(part, str):
+                                latest_user_msg = part
+                                break
                     break
 
             if latest_user_msg:
+                with open("/tmp/keboli_debug.log", "a") as f:
+                    f.write(f"Extracted user message: {latest_user_msg}\n")
+                
                 self._state["messages"].append(
                     HumanMessage(content=latest_user_msg)
                 )
+                try:
+                    await keboli_client.append_transcript(
+                        self._state["session_id"], 
+                        "candidate", 
+                        latest_user_msg
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to append candidate transcript: {e}")
 
             logger.info(f"Invoking LangGraph with user message: {latest_user_msg[:80]}...")
 
@@ -136,7 +165,23 @@ class InterviewLLMStream(llm.LLMStream):
                 )
             )
 
+            try:
+                await keboli_client.append_transcript(
+                    self._state["session_id"], 
+                    "interviewer", 
+                    ai_response
+                )
+            except Exception as e:
+                logger.warning(f"Failed to append interviewer transcript: {e}")
+
             logger.info(f"Agent response: {ai_response[:80]}...")
+
+            if result.get("is_completed"):
+                logger.info(f"Interview {self._state['session_id']} marked as COMPLETED. Triggering evaluation...")
+                try:
+                    await keboli_client.complete_session(self._state["session_id"])
+                except Exception as e:
+                    logger.error(f"Failed to trigger session completion: {e}")
 
         except Exception as e:
             logger.error(f"Error in InterviewLLMStream: {e}", exc_info=True)

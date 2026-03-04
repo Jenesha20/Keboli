@@ -43,7 +43,9 @@ async def get_session_details_for_eval(session_id: uuid.UUID, db: AsyncSession =
         "assessment_id": str(assessment.id),
         "assessment_title": assessment.title,
         "job_description": assessment.job_description,
-        "skill_graph": assessment.skill_graph
+        "skill_graph": assessment.skill_graph,
+        "passing_score": assessment.passing_score,
+        "difficulty_level": assessment.difficulty_level.value if assessment.difficulty_level else "medium"
     }
 
 @router.post("/report/{session_id}", response_model=EvaluationResponse)

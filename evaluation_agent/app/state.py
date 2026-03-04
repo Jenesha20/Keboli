@@ -11,6 +11,9 @@ class EvaluationState(TypedDict):
     
     skill_scores: Dict[str, Dict[str, Any]]
     
+    # Per-skill scores on 0-100 scale: {"React": 65, "SQL": 40, "Python": 80}
+    per_skill_scores: Dict[str, float]
+    
     scores: Dict[str, float]
     summary: Optional[str]
     explanation: Optional[str]

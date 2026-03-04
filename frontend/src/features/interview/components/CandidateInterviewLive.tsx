@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   LiveKitRoom,
@@ -19,11 +19,26 @@ import api from '../../../lib/axios';
 const glassmorphism =
   'bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]';
 
-const InterviewStage: React.FC<{ onDisconnect: () => void }> = ({ onDisconnect }) => {
+const InterviewStage: React.FC<{ onDisconnect: () => void, sessionId: string | null }> = ({ onDisconnect, sessionId }) => {
   const room = useRoomContext();
   const voiceAssistant = useVoiceAssistant();
   const isAgentSpeaking = voiceAssistant.state === 'speaking';
   const isListening = voiceAssistant.state === 'listening';
+
+  // --- Heartbeat Logic ---
+  useEffect(() => {
+    if (!sessionId || room.state !== 'connected') return;
+
+    const interval = setInterval(async () => {
+      try {
+        await api.post(`/livekit/session/heartbeat/${sessionId}`);
+      } catch (err) {
+        console.error('Heartbeat failed:', err);
+      }
+    }, 5000); // 5 seconds, matching backend logic
+
+    return () => clearInterval(interval);
+  }, [sessionId, room.state]);
 
   // Get the agent's video track (BeyondPresence avatar)
   const tracks = useTracks(
@@ -230,6 +245,7 @@ const CandidateInterviewLive: React.FC = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const connect = useCallback(async () => {
     if (!token) {
@@ -246,6 +262,7 @@ const CandidateInterviewLive: React.FC = () => {
       });
       setLivekitToken(response.data.token);
       setLivekitUrl(response.data.url);
+      setSessionId(response.data.session_id);
       setIsConnected(true);
     } catch (err: any) {
       setClientError(err.response?.data?.detail || 'Failed to start session.');
@@ -254,11 +271,21 @@ const CandidateInterviewLive: React.FC = () => {
     }
   }, [token]);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
+    if (sessionId) {
+      try {
+        await api.post(`/livekit/session/${sessionId}/complete`, null, {
+          params: { auto_evaluate: false }
+        });
+      } catch (err) {
+        console.error('Failed to complete session on disconnect:', err);
+      }
+    }
     setLivekitToken(null);
     setLivekitUrl('');
+    setSessionId(null);
     setIsConnected(false);
-  }, []);
+  }, [sessionId]);
 
   // --- Not yet connected: show the start screen ---
   if (!isConnected || !livekitToken) {
@@ -317,7 +344,7 @@ const CandidateInterviewLive: React.FC = () => {
         onDisconnected={disconnect}
         className="w-full flex flex-col items-center"
       >
-        <InterviewStage onDisconnect={disconnect} />
+        <InterviewStage onDisconnect={disconnect} sessionId={sessionId} />
       </LiveKitRoom>
     </div>
   );

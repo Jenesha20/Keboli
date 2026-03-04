@@ -88,12 +88,19 @@ async def analyze_technical_node(state: EvaluationState):
     prompt = PromptManager.get_technical_prompt(transcript_text, str(raw_skill_graph))
     
     resp = await llm.ainvoke([
-        SystemMessage(content="You are a rigorous technical evaluator. You MUST output valid JSON. Score strictly using the provided rubric. Do not inflate scores."),
+        SystemMessage(content="You are a rigorous technical evaluator. You MUST output valid JSON. Score strictly using the provided multi-layer rubric. Do not inflate scores. Apply all three evaluation layers for each skill."),
         HumanMessage(content=prompt)
     ])
     
     data = extract_json(resp.content)
     if data and "skill_evaluations" in data:
+        # Log multi-layer scores for debugging
+        for skill_name, skill_data in data["skill_evaluations"].items():
+            relevance = skill_data.get('relevance_score', 'N/A')
+            depth = skill_data.get('depth_score', 'N/A')
+            composite = skill_data.get('score', 'N/A')
+            print(f"[EVAL TECH] {skill_name}: Relevance={relevance}, Depth={depth}, Composite={composite}")
+        
         return {
             "technical_analysis": json.dumps(data) if isinstance(data, dict) else str(data),
             "skill_scores": data["skill_evaluations"]
@@ -107,25 +114,49 @@ async def analyze_communication_node(state: EvaluationState):
     prompt = PromptManager.get_communication_prompt(transcript_text)
     
     resp = await llm.ainvoke([
-        SystemMessage(content="You are a rigorous communication assessor. Output valid JSON. Score strictly using the provided rubric."),
+        SystemMessage(content="You are a rigorous communication and confidence assessor. Output valid JSON. Score strictly using the provided rubric. You MUST count filler words, hedging phrases, and assertive phrases explicitly."),
         HumanMessage(content=prompt)
     ])
     
     data = extract_json(resp.content)
+    
+    if data:
+        # Log enhanced communication metrics
+        filler_count = data.get('filler_word_count', 0)
+        hedging_ratio = data.get('hedging_ratio', 'N/A')
+        hedging_count = data.get('hedging_count', 0)
+        assertive_count = data.get('assertive_count', 0)
+        print(f"[EVAL COMM] Fillers: {filler_count}, Hedging: {hedging_count}, Assertive: {assertive_count}, Ratio: {hedging_ratio}")
+        print(f"[EVAL COMM] Sub-scores → Clarity: {data.get('clarity_subscore', 'N/A')}, "
+              f"Articulation: {data.get('articulation_subscore', 'N/A')}, "
+              f"Structure: {data.get('structure_subscore', 'N/A')}")
+    
     return {"communication_analysis": json.dumps(data) if data else resp.content}
 
 async def analyze_cultural_fit_node(state: EvaluationState):
     llm = get_llm(temperature=0)
     transcript_text = "\n".join([f"{t['role']}: {t['text']}" for t in state['transcript']])
     
-    prompt = PromptManager.get_cultural_fit_prompt(transcript_text)
+    job_description = state['assessment_details'].get('job_description', '')
+    
+    prompt = PromptManager.get_cultural_fit_prompt(transcript_text, job_description)
     
     resp = await llm.ainvoke([
-        SystemMessage(content="You are a rigorous culture assessor. Output valid JSON. Score conservatively."),
+        SystemMessage(content="You are a rigorous culture and behavioral assessor. Output valid JSON. Score conservatively using the behavioral rubric dimensions. Evaluate each of the 5 dimensions separately."),
         HumanMessage(content=prompt)
     ])
     
     data = extract_json(resp.content)
+    
+    if data:
+        # Log behavioral rubric scores
+        rubric = data.get('behavioral_rubric', {})
+        for dimension, dim_data in rubric.items():
+            if isinstance(dim_data, dict):
+                print(f"[EVAL CULTURE] {dimension}: {dim_data.get('score', 'N/A')}/5")
+        print(f"[EVAL CULTURE] Overall: {data.get('cultural_fit_score', 'N/A')}/5, "
+              f"STAR stories: {data.get('star_stories_detected', 0)}")
+    
     return {"cultural_analysis": json.dumps(data) if data else resp.content}
 
 
@@ -139,11 +170,15 @@ async def final_scoring_node(state: EvaluationState):
     print(f"[EVAL DEBUG] Parsed skills: {list(parsed_skills.keys())}")
     print(f"[EVAL DEBUG] LLM evaluated skills: {list(skill_evaluations.keys())}")
 
+    # ── Multi-layer weighted technical scoring ──
     weighted_tech_score = 0.0
     evaluated_weight_sum = 0.0
     total_weight_sum = 0.0
     matched_skills = []
     unmatched_skills = []
+    
+    # Per-skill scores on 0-100 scale for admin display
+    per_skill_scores = {}
 
     for skill_name, weight in parsed_skills.items():
         total_weight_sum += weight
@@ -151,18 +186,35 @@ async def final_scoring_node(state: EvaluationState):
         eval_data = _find_skill_score(skill_evaluations, skill_name)
         if eval_data and eval_data.get('score') is not None:
             try:
-                score = float(eval_data['score'])
-                score = min(5.0, max(0.0, score))
-                weighted_tech_score += score * weight
+                # Use the composite score (Layer 3) which already factors in relevance & depth
+                composite_score = float(eval_data['score'])
+                composite_score = min(5.0, max(0.0, composite_score))
+                
+                # Also extract layer scores for detailed logging
+                relevance = float(eval_data.get('relevance_score', composite_score))
+                depth = float(eval_data.get('depth_score', composite_score))
+                
+                weighted_tech_score += composite_score * weight
                 evaluated_weight_sum += weight
-                matched_skills.append(f"{skill_name}: {score}/5 (w={weight})")
+                
+                # Convert to 0-100 scale for per-skill admin display
+                skill_score_100 = round(composite_score * 20.0, 1)
+                per_skill_scores[skill_name] = skill_score_100
+                
+                matched_skills.append(
+                    f"{skill_name}: {composite_score}/5 "
+                    f"(R={relevance:.1f}, D={depth:.1f}, w={weight})"
+                )
             except (ValueError, TypeError):
                 unmatched_skills.append(skill_name)
+                per_skill_scores[skill_name] = 0.0
         else:
             unmatched_skills.append(skill_name)
+            per_skill_scores[skill_name] = 0.0
 
-    print(f"[EVAL DEBUG] Matched: {matched_skills}")
+    print(f"[EVAL DEBUG] Matched (multi-layer): {matched_skills}")
     print(f"[EVAL DEBUG] Unmatched/unevaluated: {unmatched_skills}")
+    print(f"[EVAL DEBUG] Per-skill scores (0-100): {per_skill_scores}")
 
     if evaluated_weight_sum > 0:
         normalized_tech_score = weighted_tech_score / evaluated_weight_sum
@@ -171,35 +223,106 @@ async def final_scoring_node(state: EvaluationState):
 
     coverage_ratio = evaluated_weight_sum / total_weight_sum if total_weight_sum > 0 else 0.0
 
-    
     coverage_factor = 0.85 + (0.15 * coverage_ratio)
     final_technical_score = normalized_tech_score * coverage_factor
     final_technical_score = min(5.0, max(0.0, final_technical_score))
 
     print(f"[EVAL DEBUG] Normalized tech: {normalized_tech_score:.2f}, Coverage: {coverage_ratio:.2f}, Final tech: {final_technical_score:.2f}")
 
+    # ── Enhanced Communication scoring with sub-scores ──
     comm_data = extract_json(state.get('communication_analysis') or "{}") or {}
     cult_data = extract_json(state.get('cultural_analysis') or "{}") or {}
 
+    # Communication: use sub-scores for more accurate scoring
     try:
-        comm_score = float(comm_data.get('communication_score', 0))
+        # Try to use the enhanced sub-scores first
+        clarity = float(comm_data.get('clarity_subscore', 0))
+        articulation = float(comm_data.get('articulation_subscore', 0))
+        structure = float(comm_data.get('structure_subscore', 0))
+        
+        # If sub-scores are available, calculate weighted communication score
+        if clarity > 0 or articulation > 0 or structure > 0:
+            comm_score = (clarity * 0.35) + (articulation * 0.35) + (structure * 0.30)
+        else:
+            comm_score = float(comm_data.get('communication_score', 0))
+        
         comm_score = min(5.0, max(0.0, comm_score))
     except (ValueError, TypeError):
         comm_score = 0.0
 
+    # Confidence: factor in hedging ratio for more accurate scoring
     try:
         conf_score = float(comm_data.get('confidence_score', 0))
+        
+        # Apply hedging ratio adjustment if available
+        hedging_ratio = comm_data.get('hedging_ratio')
+        if hedging_ratio is not None:
+            try:
+                hr = float(hedging_ratio)
+                # If hedging ratio is very high but confidence score is also high, moderate it
+                if hr > 0.6 and conf_score > 3.0:
+                    conf_score = min(conf_score, 3.0)
+                    print(f"[EVAL DEBUG] Confidence capped at 3.0 due to high hedging ratio: {hr:.2f}")
+                elif hr < 0.2 and conf_score < 3.5:
+                    # If very assertive but scored low, give a small boost
+                    conf_score = max(conf_score, conf_score + 0.5)
+                    print(f"[EVAL DEBUG] Confidence boosted by 0.5 due to low hedging ratio: {hr:.2f}")
+            except (ValueError, TypeError):
+                pass
+        
+        # Apply filler word penalty
+        filler_count = comm_data.get('filler_word_count', 0)
+        if isinstance(filler_count, (int, float)) and filler_count > 10:
+            penalty = min(1.0, (filler_count - 10) * 0.1)
+            comm_score = max(0.0, comm_score - penalty)
+            print(f"[EVAL DEBUG] Communication penalized by {penalty:.1f} for {filler_count} filler words")
+        
         conf_score = min(5.0, max(0.0, conf_score))
     except (ValueError, TypeError):
         conf_score = 0.0
 
+    # ── Enhanced Cultural Fit scoring with behavioral rubric ──
     try:
-        cult_score = float(cult_data.get('cultural_fit_score', 0))
+        # Try to use behavioral rubric dimension scores
+        rubric = cult_data.get('behavioral_rubric', {})
+        if rubric and isinstance(rubric, dict):
+            dimension_scores = []
+            dimension_weights = {
+                'ownership': 0.25,
+                'collaboration': 0.25,
+                'growth_mindset': 0.20,
+                'innovation': 0.15,
+                'integrity': 0.15
+            }
+            
+            weighted_cult = 0.0
+            total_cult_weight = 0.0
+            
+            for dim_name, dim_weight in dimension_weights.items():
+                dim_data = rubric.get(dim_name, {})
+                if isinstance(dim_data, dict) and dim_data.get('score') is not None:
+                    try:
+                        dim_score = float(dim_data['score'])
+                        dim_score = min(5.0, max(0.0, dim_score))
+                        weighted_cult += dim_score * dim_weight
+                        total_cult_weight += dim_weight
+                        dimension_scores.append(f"{dim_name}: {dim_score}/5")
+                    except (ValueError, TypeError):
+                        continue
+            
+            if total_cult_weight > 0:
+                cult_score = weighted_cult / total_cult_weight
+                print(f"[EVAL DEBUG] Cultural dimensions: {', '.join(dimension_scores)}")
+            else:
+                cult_score = float(cult_data.get('cultural_fit_score', 0))
+        else:
+            cult_score = float(cult_data.get('cultural_fit_score', 0))
+        
         cult_score = min(5.0, max(0.0, cult_score))
     except (ValueError, TypeError):
         cult_score = 0.0
 
-  
+    # ── Final weighted total ──
     final_total_score = (
         (final_technical_score * 0.60) +
         (comm_score * 0.15) +
@@ -255,6 +378,28 @@ async def final_scoring_node(state: EvaluationState):
 
     print(f"[EVAL DEBUG] Final recommendation: {final_recommendation}")
 
+    # Build enhanced communication sub-scores for the response
+    comm_sub_scores = {}
+    if comm_data:
+        comm_sub_scores = {
+            "clarity": round(float(comm_data.get('clarity_subscore', comm_score)), 2),
+            "articulation": round(float(comm_data.get('articulation_subscore', comm_score)), 2),
+            "structure": round(float(comm_data.get('structure_subscore', comm_score)), 2),
+            "filler_word_count": comm_data.get('filler_word_count', 0),
+            "hedging_ratio": comm_data.get('hedging_ratio', None),
+            "hedging_count": comm_data.get('hedging_count', 0),
+            "assertive_count": comm_data.get('assertive_count', 0),
+        }
+
+    # Build behavioral rubric summary for the response
+    behavioral_summary = {}
+    if cult_data and 'behavioral_rubric' in cult_data:
+        rubric = cult_data['behavioral_rubric']
+        for dim_name in ['ownership', 'collaboration', 'growth_mindset', 'innovation', 'integrity']:
+            dim_data = rubric.get(dim_name, {})
+            if isinstance(dim_data, dict):
+                behavioral_summary[dim_name] = round(float(dim_data.get('score', 0)), 2)
+
     return {
         "scores": {
             "technical": round(final_technical_score, 2),
@@ -263,8 +408,11 @@ async def final_scoring_node(state: EvaluationState):
             "cultural_fit": round(cult_score, 2),
             "total": round(final_total_score, 2),
             "coverage_ratio": round(coverage_ratio, 2),
-            "total_score_100": round(total_score_100, 2)
+            "total_score_100": round(total_score_100, 2),
+            "communication_sub_scores": comm_sub_scores,
+            "behavioral_rubric": behavioral_summary,
         },
+        "per_skill_scores": per_skill_scores,
         "summary": data.get("summary", ""),
         "explanation": data.get("explanation", ""),
         "recommendation": final_recommendation,
