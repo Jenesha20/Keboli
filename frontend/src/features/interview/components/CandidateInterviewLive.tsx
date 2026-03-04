@@ -8,6 +8,7 @@ import {
   useRoomContext,
   VideoTrack,
   useTracks,
+  useTranscriptions,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { Track } from 'livekit-client';
@@ -18,12 +19,11 @@ import api from '../../../lib/axios';
 const glassmorphism =
   'bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]';
 
-// ---------------------------------------------------------
-// Inner component — lives INSIDE LiveKitRoom so hooks work
-// ---------------------------------------------------------
 const InterviewStage: React.FC<{ onDisconnect: () => void }> = ({ onDisconnect }) => {
   const room = useRoomContext();
   const voiceAssistant = useVoiceAssistant();
+  const isAgentSpeaking = voiceAssistant.state === 'speaking';
+  const isListening = voiceAssistant.state === 'listening';
 
   // Get the agent's video track (BeyondPresence avatar)
   const tracks = useTracks(
@@ -34,10 +34,14 @@ const InterviewStage: React.FC<{ onDisconnect: () => void }> = ({ onDisconnect }
   // Find the agent's video track (not the candidate's)
   const agentVideoTrack = tracks.find(
     (t) => t.participant.identity !== room.localParticipant.identity
-  );
+  ) as any; // Cast as any or specific type to bypass placeholder mismatch
 
-  const isAgentSpeaking = voiceAssistant.state === 'speaking';
-  const isListening = voiceAssistant.state === 'listening';
+  const segments = useTranscriptions();
+
+  // Get the latest transcription from anyone (agent or candidate)
+  // or specifically the local participant if we want to show what the user is saying
+  const lastSegment = segments[segments.length - 1];
+  const activeTranscript = lastSegment?.text || (isListening ? 'Listening...' : 'Waiting...');
 
   return (
     <>
@@ -202,7 +206,7 @@ const InterviewStage: React.FC<{ onDisconnect: () => void }> = ({ onDisconnect }
               </span>
             </div>
             <p className="text-lg font-medium leading-relaxed text-slate-200">
-              {isListening ? 'Listening...' : 'Waiting...'}
+              {activeTranscript}
             </p>
           </div>
         </section>
