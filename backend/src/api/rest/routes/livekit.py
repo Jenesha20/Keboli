@@ -19,7 +19,6 @@ async def get_token(
     invitation_token: str = Query(..., description="The invitation token"),
     db: AsyncSession = Depends(get_db),
 ):
-    # Lookup invitation
     query = select(Invitation).options(joinedload(Invitation.assessment)).where(Invitation.token == invitation_token)
     result = await db.execute(query)
     invitation = result.scalar_one_or_none()
@@ -27,8 +26,7 @@ async def get_token(
     if not invitation:
         raise HTTPException(status_code=404, detail="Invitation not found")
 
-    # Find or create session
-    # For now, let's just create a new one or get the most recent one
+  
     query = select(InterviewSession).where(
         InterviewSession.invitation_id == invitation.id,
         InterviewSession.status == InterviewSessionStatus.IN_PROGRESS
@@ -37,7 +35,6 @@ async def get_token(
     session = result.scalar_one_or_none()
 
     if not session:
-        # Get assessment duration for remaining_seconds
         duration_mins = 60
         if invitation.assessment:
             duration_mins = invitation.assessment.duration_minutes
